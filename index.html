@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Client Submission Form</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      padding: 30px;
+    }
+    #surveyContainer {
+      background-color: #fff;
+      max-width: 800px;
+      margin: auto;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://unpkg.com/survey-jquery@1.8.44/survey.jquery.min.js"></script>
+  <link href="https://unpkg.com/survey-jquery@1.8.44/modern.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div id="surveyContainer"></div>
+
+  <script>
+    $(document).ready(function () {
+      Survey.StylesManager.applyTheme("modern");
+
+      var surveyJSON = {
+        title: "Client Submission Form",
+        pages: [
+          {
+            name: "page1",
+            elements: [
+              {
+                type: "text",
+                name: "question1",
+                title: "Client Name",
+                isRequired: true
+              },
+              {
+                type: "dropdown",
+                name: "question2",
+                title: "Process",
+                isRequired: true,
+                choices: [
+                  { value: "Accounting", text: "Accounting" },
+                  { value: "Payroll", text: "Payroll" },
+                  { value: "SalesTax", text: "SalesTax" }
+                ]
+              },
+              {
+                type: "dropdown",
+                name: "question3_dropdown",
+                title: "Month",
+                isRequired: true,
+                choices: [
+                  "01_2025",
+                  "02_2025",
+                  "03_2025",
+                  "04_2025",
+                  "05_2025",
+                  "06_2025",
+                  "07_2025",
+                  "08_2025",
+                  "09_2025",
+                  "10_2025",
+                  "11_2025",
+                  "12_2025"
+                ],
+                visibleIf: "{question2} != 'Payroll'"
+              },
+              {
+                type: "text",
+                name: "question3_date",
+                title: "Select Date",
+                inputType: "date",
+                isRequired: true,
+                visibleIf: "{question2} = 'Payroll'"
+              },
+              {
+                type: "file",
+                name: "question4",
+                title: "Upload file",
+                isRequired: true,
+                storeDataAsText: true,
+                showPreview: true,
+                allowMultiple: true,
+                maxSize: 10240000
+              },
+              {
+                type: "comment",
+                name: "question5",
+                title: "Additional Comments",
+                placeholder: "Enter any additional notes or information here...",
+                rows: 4
+              }
+            ]
+          }
+        ]
+      };
+
+      function sendDataToServer(survey) {
+        const data = survey.data;
+
+        const formattedData = {
+          clientName: data.question1,
+          process: data.question2,
+          month: data.question2 === "Payroll" ? data.question3_date : data.question3_dropdown,
+          attachments: data.question4,
+          comments: data.question5
+        };
+
+        console.log("Sending to Power Automate:", formattedData);
+
+        $.ajax({
+          url: 'https://prod-112.westus.logic.azure.com:443/workflows/9d7a2c04b2a24286a0c45f48696ba997/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ZuqGHPE675za5IYsx7z4EmpXl4IH8GeJO9N_l4Uektw',
+          type: 'POST',
+          dataType: 'text',
+          contentType: 'application/json',
+          data: JSON.stringify(formattedData),
+          success: function (response) {
+            alert("Submission successful!");
+            console.log("Response:", response);
+          },
+          error: function (xhr, status, error) {
+            alert("Submission failed: " + error);
+            console.error("Error:", error);
+          }
+        });
+      }
+
+      const survey = new Survey.Model(surveyJSON);
+      $("#surveyContainer").Survey({
+        model: survey,
+        onComplete: sendDataToServer
+      });
+
+      // ✅ Auto-populate client name from URL (e.g. ?client=Rara)
+      const urlParams = new URLSearchParams(window.location.search);
+      const clientFromUrl = urlParams.get("client");
+      if (clientFromUrl) {
+        survey.setValue("question1", clientFromUrl);
+      }
+    });
+  </script>
+</body>
+</html>
+
+
